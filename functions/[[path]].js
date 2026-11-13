@@ -127,13 +127,9 @@ async function home(url, db) {
     AND (?='' OR instr(lower(b.title||' '||b.region),lower(?))>0)
     AND (?='' OR b.category=?) ORDER BY b.created_at DESC,b.slug LIMIT 60`)
     .bind(query, query, category, category).all();
-  return page('Local group buying', `<section class="hero"><div class="wrap hero-inner">
-<div class="disclaimer-banner" style="background: #f0f7ff; border-left: 4px solid #0066cc; padding: 12px 16px; margin-bottom: 20px; font-size: 14px; line-height: 1.4;">
-<strong>📢 Public Community Initiative</strong><br>${disclaimer}
-</div>
-<div><h1>Buy together.<br><em>Share the cost.</em></h1><p>Find people nearby who want the same product. Combine quantities to reach a supplier’s bulk minimum and share the shipping cost.</p><p>${paymentNotice}</p>
-<div class="actions"><a class="button" href="#browse">Browse group buys</a><a class="button quiet" href="/propose">Propose a buy</a></div></div>
-<aside><p class="tag">How the math works</p><strong>$20 shipping per unit</strong><p>Example: 20 units share one $400 shipment. Product cost and other charges are separate.</p></aside>
+  return page('Local group buying', `<div class="disclaimer-banner-top" style="background: #f0f7ff; border-bottom: 1px solid #c8dff0; padding: 14px 0; font-size: 13px; line-height: 1.5; color: #0a3d62;"><div class="wrap"><strong style="color: #0066cc;">📢 Public Community Initiative:</strong> ${disclaimer}</div></div><section class="hero"><div class="wrap hero-inner-full">
+<h1>Buy together.<br><em>Share the cost.</em></h1><p>Find people nearby who want the same product. Combine quantities to reach a supplier's bulk minimum and share the shipping cost.</p><p>${paymentNotice}</p>
+<div class="actions"><a class="button" href="#browse">Browse group buys</a><a class="button quiet" href="/propose">Propose a buy</a></div>
 </div></section><section class="wrap block" id="browse"><h2>Open group buys</h2>
 <form class="filters" action="/#browse"><label>Search products or pickup areas<input name="q" value="${escape(query)}" placeholder="e.g. shelving or Los Angeles"></label>
 <label>Category<select name="category"><option value="">All categories</option>${categories.map(item => `<option${item === category ? ' selected' : ''}>${escape(item)}</option>`).join('')}</select></label><button>Search</button></form>
