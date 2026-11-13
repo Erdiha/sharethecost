@@ -1,0 +1,25 @@
+# Cloudflare Workers configuration for Share the Cost
+# 
+# DO NOT COMMIT YOUR ACTUAL DATABASE ID OR SECRETS
+# This is a template. Follow DEPLOYMENT.md to set up your real environment.
+#
+# Steps:
+# 1. Copy this file to wrangler.toml: `cp wrangler.toml.template wrangler.toml`
+# 2. Get your D1 database ID from Cloudflare dashboard (Workers → D1 → sharethecost)
+# 3. Replace REPLACE_WITH_YOUR_D1_DATABASE_ID with your actual ID
+# 4. Never commit wrangler.toml to git (it's in .gitignore)
+
+name = "sharethecost"
+main = "functions/[[path]].js"
+compatibility_date = "2026-11-13"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "sharethecost"
+database_id = "REPLACE_WITH_YOUR_D1_DATABASE_ID"
+migrations_dir = "migrations"
+
+# Environment variables (set in Cloudflare dashboard, not here):
+# ADMIN_PASSWORD: Your admin panel password
+# TURNSTILE_SITE_KEY: From Cloudflare Turnstile dashboard
+# TURNSTILE_SECRET: From Cloudflare Turnstile dashboard (keep secret!)
