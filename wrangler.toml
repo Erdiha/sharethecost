@@ -1,0 +1,9 @@
+name = "sharethecost"
+pages_build_output_dir = "./dist"
+compatibility_date = "2026-11-13"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "sharethecost"
+database_id = "38e3f518-f10f-4e4d-9f8e-989c96295568"
+migrations_dir = "migrations"
