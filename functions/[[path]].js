@@ -127,17 +127,72 @@ async function home(url, db) {
     AND (?='' OR instr(lower(b.title||' '||b.region),lower(?))>0)
     AND (?='' OR b.category=?) ORDER BY b.created_at DESC,b.slug LIMIT 60`)
     .bind(query, query, category, category).all();
-  return page('Local group buying', `<div class="disclaimer-banner-top" style="background: #f0f7ff; border-bottom: 1px solid #c8dff0; padding: 14px 0; font-size: 13px; line-height: 1.5; color: #0a3d62;"><div class="wrap"><strong style="color: #0066cc;">📢 Public Community Initiative:</strong> ${disclaimer}</div></div><section class="hero"><div class="wrap hero-inner-full">
-<h1>Buy together.<br><em>Share the cost.</em></h1><p>Find people nearby who want the same product. Combine quantities to reach a supplier's bulk minimum and share the shipping cost.</p><p>${paymentNotice}</p>
-<div class="actions"><a class="button" href="#browse">Browse group buys</a><a class="button quiet" href="/propose">Propose a buy</a></div>
-</div></section><section class="wrap block" id="browse"><h2>Open group buys</h2>
-<form class="filters" action="/#browse"><label>Search products or pickup areas<input name="q" value="${escape(query)}" placeholder="e.g. shelving or Los Angeles"></label>
-<label>Category<select name="category"><option value="">All categories</option>${categories.map(item => `<option${item === category ? ' selected' : ''}>${escape(item)}</option>`).join('')}</select></label><button>Search</button></form>
-<div class="cards">${results.map(card).join('') || '<p>No matching group buys. <a href="/propose">Propose a product</a>.</p>'}</div></section>
-<section class="wrap block" id="how"><h2>How it works</h2><div class="cards">
-<article><h3>Suggest a product</h3><p>Share a supplier link, pickup area, and the minimum order quantity.</p></article>
-<article><h3>Build the group</h3><p>Buyers register how many units they want. They can withdraw anytime.</p></article>
-<article><h3>Coordinate the order</h3><p>The organizer confirms the quote and pickup details. Buyers arrange payment separately.</p></article></div></section>`, { path: '/' });
+  return page('Local group buying', `<section class="hero-full">
+<div class="hero-badge">By Haci Group • Community Initiative</div>
+<div class="wrap hero-center">
+<h1>Buy together.<br><span class="highlight">Share the cost.</span></h1>
+<p class="hero-subtitle">Find neighbors who want the same products. Combine bulk orders and split shipping costs.</p>
+<div class="hero-features">
+<div class="feature"><span class="icon">🤝</span><p><strong>Group buying</strong> with your community</p></div>
+<div class="feature"><span class="icon">💰</span><p><strong>Save money</strong> on bulk minimums</p></div>
+<div class="feature"><span class="icon">🔒</span><p><strong>Payment free</strong> platform</p></div>
+</div>
+<div class="actions hero-actions">
+<a class="button primary" href="#browse">Browse active buys</a>
+<a class="button secondary" href="/propose">Start a buy</a>
+</div>
+<p class="hero-notice">${paymentNotice}</p>
+</div>
+</section>
+
+<section class="wrap section-block" id="browse">
+<div class="section-header">
+<h2>Active Group Buys</h2>
+<p class="section-subtitle">Organized by community members to save on bulk purchases</p>
+</div>
+<form class="filters" action="/#browse">
+<label><input name="q" value="${escape(query)}" placeholder="Search by product or location..."></label>
+<label>
+<select name="category">
+<option value="">All categories</option>
+${categories.map(item => `<option${item === category ? ' selected' : ''}>${escape(item)}</option>`).join('')}
+</select>
+</label>
+<button>Search</button>
+</form>
+<div class="cards-grid">${results.map(card).join('') || '<div class="empty-state"><p style="margin: 40px 0; text-align: center; color: #526459;">No group buys found. <a href="/propose">Be the first to propose one!</a></p></div>'}</div>
+</section>
+
+<section class="how-it-works">
+<div class="wrap">
+<div class="section-header">
+<h2>How it works</h2>
+<p class="section-subtitle">Simple steps to start saving</p>
+</div>
+<div class="steps">
+<div class="step">
+<div class="step-number">1</div>
+<h3>Someone proposes</h3>
+<p>A community member suggests a product and the bulk minimum needed.</p>
+</div>
+<div class="step">
+<div class="step-number">2</div>
+<h3>Others join</h3>
+<p>Register how many units you want. Withdraw anytime before ordering.</p>
+</div>
+<div class="step">
+<div class="step-number">3</div>
+<h3>Organizer coordinates</h3>
+<p>Once the minimum is met, share pickup details and shipping costs.</p>
+</div>
+<div class="step">
+<div class="step-number">4</div>
+<h3>You save</h3>
+<p>Arrange payment directly with the supplier. Keep the bulk savings!</p>
+</div>
+</div>
+</div>
+</section>`, { path: '/' });
 }
 function propose(url, env) {
   return page('Propose a group buy', section(`<h1>Propose a group buy</h1><p>Approved proposals appear on the site. Your email stays private and is available to the organizer for coordination.</p><p>${paymentNotice}</p>
