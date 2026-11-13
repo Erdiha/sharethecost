@@ -1,6 +1,7 @@
 const categories = ['Home & garden', 'Tools & hardware', 'Electronics', 'Sports & outdoors', 'Other'];
 const canonical = 'https://sharethecost.whenly.org';
 const paymentNotice = 'Share the Cost never collects payments or card details. Buyers arrange payment directly with the supplier or organizer.';
+const disclaimer = 'This is a public community help initiative by Haci Group. Share the Cost is a free platform that facilitates group buying to help community members save on bulk purchases.';
 const usd = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
 const escape = (value = '') => String(value).replace(/[&<>"']/g, char => ({
   '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
@@ -127,6 +128,9 @@ async function home(url, db) {
     AND (?='' OR b.category=?) ORDER BY b.created_at DESC,b.slug LIMIT 60`)
     .bind(query, query, category, category).all();
   return page('Local group buying', `<section class="hero"><div class="wrap hero-inner">
+<div class="disclaimer-banner" style="background: #f0f7ff; border-left: 4px solid #0066cc; padding: 12px 16px; margin-bottom: 20px; font-size: 14px; line-height: 1.4;">
+<strong>📢 Public Community Initiative</strong><br>${disclaimer}
+</div>
 <div><h1>Buy together.<br><em>Share the cost.</em></h1><p>Find people nearby who want the same product. Combine quantities to reach a supplier’s bulk minimum and share the shipping cost.</p><p>${paymentNotice}</p>
 <div class="actions"><a class="button" href="#browse">Browse group buys</a><a class="button quiet" href="/propose">Propose a buy</a></div></div>
 <aside><p class="tag">How the math works</p><strong>$20 shipping per unit</strong><p>Example: 20 units share one $400 shipment. Product cost and other charges are separate.</p></aside>
