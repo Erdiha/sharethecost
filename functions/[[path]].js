@@ -28,6 +28,7 @@ const errorPage = (status, message) => page('Something went wrong', section(`<h1
 const redirect = path => new Response(null, { status: 303, headers: { Location: path, 'Referrer-Policy': 'no-referrer' } });
 const field = (form, key) => String(form.get(key) ?? '').trim();
 const maxFormBytes = 48 * 1024;
+const turnstileConfigured = env => Boolean(env.TURNSTILE_SITE_KEY?.trim() && env.TURNSTILE_SECRET?.trim());
 
 async function readForm(request) {
   const reader = request.body?.getReader();
@@ -89,13 +90,14 @@ async function hash(value) {
 const dev = (url, env) => env.LOCAL_DEV === '1' && ['127.0.0.1', 'localhost'].includes(url.hostname);
 function captcha(url, env) {
   if (dev(url, env)) return '';
+  if (!turnstileConfigured(env)) return '<p role="alert">Online verification is temporarily unavailable. Please try again later.</p>';
   return `<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
 <div class="cf-turnstile" data-sitekey="${escape(env.TURNSTILE_SITE_KEY ?? '')}"></div>`;
 }
 async function verified(form, url, env) {
   if (dev(url, env)) return true;
   const token = field(form, 'cf-turnstile-response');
-  if (!env.TURNSTILE_SECRET || !token || token.length > 2048) return false;
+  if (!turnstileConfigured(env) || !token || token.length > 2048) return false;
   const response = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
     method: 'POST', body: new URLSearchParams({ secret: env.TURNSTILE_SECRET, response: token }),
   });
@@ -151,12 +153,12 @@ async function home(url, db) {
 <p class="section-subtitle">Organized by community members to save on bulk purchases</p>
 </div>
 <form class="filters" action="/#browse">
-<label><input name="q" value="${escape(query)}" placeholder="Search by product or location..."></label>
-<label>
+<label>Search products or pickup areas<input type="search" name="q" value="${escape(query)}" placeholder="Product or city"></label>
+<label>Category<span class="select-control">
 <select name="category">
 <option value="">All categories</option>
 ${categories.map(item => `<option${item === category ? ' selected' : ''}>${escape(item)}</option>`).join('')}
-</select>
+</select></span>
 </label>
 <button>Search</button>
 </form>
@@ -196,12 +198,12 @@ ${categories.map(item => `<option${item === category ? ' selected' : ''}>${escap
 }
 function propose(url, env) {
   return page('Propose a group buy', section(`<h1>Propose a group buy</h1><p>Approved proposals appear on the site. Your email stays private and is available to the organizer for coordination.</p><p>${paymentNotice}</p>
-<form method="post" class="stack">
+<form method="post" class="stack proposal-form">
 <label>Product name<input name="title" required minlength="3" maxlength="100"></label>
-<label>Category<select name="category" required>${categories.map(item => `<option>${escape(item)}</option>`).join('')}</select></label>
-<label>Pickup area<input name="region" required minlength="2" maxlength="80" placeholder="City, state"></label>
-<label>Supplier URL<input type="url" name="supplier" required maxlength="2048"></label>
-<label>Minimum order quantity<input type="number" name="target" required min="2" max="100000"></label>
+<label class="field-half">Category<span class="select-control"><select name="category" required><option value="" selected disabled>Select a category</option>${categories.map(item => `<option>${escape(item)}</option>`).join('')}</select></span></label>
+<label class="field-half">Pickup area<input name="region" required minlength="2" maxlength="80" placeholder="City, state"></label>
+<label class="field-half">Supplier URL<input type="url" name="supplier" required maxlength="2048"></label>
+<label class="field-half">Minimum order quantity<input type="number" name="target" required min="2" max="100000"></label>
 <label>Product and shipping details<textarea name="description" required minlength="10" maxlength="2000"></textarea></label>
 <label>Email<input type="email" name="email" required maxlength="254"></label>
 ${captcha(url, env)}<button>Submit for review</button></form>`));
@@ -348,6 +350,9 @@ export async function onRequest({ request, env, next }) {
     if (organizer) return await admin(form, env.DB, organizer[1]);
     if (interest) return await manage(form, env.DB, interest[1]);
     if (posting && (buy || path === '/propose')) {
+      if (!dev(url, env) && !turnstileConfigured(env)) {
+        return errorPage(503, 'Form submissions are temporarily unavailable. Please try again later.');
+      }
       if (!await verified(form, url, env)) return errorPage(403, 'Verification failed. Return to the form and try again.');
       return buy ? await join(form, env.DB, buy[1]) : await submitProposal(form, env.DB);
     }

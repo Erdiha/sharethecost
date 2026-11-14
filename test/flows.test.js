@@ -3,6 +3,32 @@ import { test } from 'node:test';
 import { onRequest } from '../functions/[[path]].js';
 import { openDatabase } from '../local-db.js';
 
+test('production forms explain missing Turnstile configuration and reject submissions', async t => {
+  const DB = openDatabase();
+  t.after(() => DB.close());
+  const origin = 'https://sharethecost.whenly.org';
+  const env = { DB };
+
+  const formPage = await onRequest({ request: new Request(origin + '/propose'), env });
+  const html = await formPage.text();
+  assert.match(html, /Online verification is temporarily unavailable/);
+  assert.doesNotMatch(html, /data-sitekey=""/);
+
+  const form = new URLSearchParams({
+    title: 'Steel shelving', category: 'Tools & hardware', region: 'Los Angeles',
+    supplier: 'https://supplier.example/shelving', description: 'Bulk shelving with local pickup.',
+    target: '20', email: 'organizer@example.org',
+  });
+  const response = await onRequest({ request: new Request(origin + '/propose', {
+    method: 'POST',
+    headers: { Origin: origin, 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: form,
+  }), env });
+
+  assert.equal(response.status, 503);
+  assert.equal((await DB.prepare('SELECT COUNT(*) AS count FROM buys').first()).count, 0);
+});
+
 test('group buys persist through proposal, moderation, independent joins, updates and closure', async t => {
   const DB = openDatabase();
   t.after(() => DB.close());
