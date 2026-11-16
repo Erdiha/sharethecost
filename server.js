@@ -15,9 +15,18 @@ createServer(async (incoming, outgoing) => {
       method: incoming.method, headers: incoming.headers,
       ...(incoming.method === 'POST' ? { body: incoming, duplex: 'half' } : {}),
     });
-    const response = await onRequest({ request, env, next: () => new Response(css, {
-      headers: { 'Content-Type': 'text/css; charset=utf-8' },
-    }) });
+    const pathname = new URL(request.url).pathname;
+    const response = await onRequest({ request, env, next: () => {
+      if (pathname === '/style.css') return new Response(css, {
+        headers: { 'Content-Type': 'text/css; charset=utf-8' },
+      });
+      const asset = pathname.match(/^\/assets\/([a-z-]+\.(woff2|jpg|png|js))$/);
+      if (!asset) return new Response(null, { status: 404 });
+      const data = readFileSync(new URL(`./dist/assets/${asset[1]}`, import.meta.url), { throwIfNoEntry: false });
+      return data ? new Response(data, {
+        headers: { 'Content-Type': { woff2: 'font/woff2', jpg: 'image/jpeg', png: 'image/png', js: 'text/javascript; charset=utf-8' }[asset[2]] },
+      }) : new Response(null, { status: 404 });
+    } });
     outgoing.writeHead(response.status, Object.fromEntries(response.headers));
     outgoing.end(Buffer.from(await response.arrayBuffer()));
   } catch {

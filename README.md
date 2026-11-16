@@ -17,12 +17,6 @@ After approval, use the organizer dashboard to publish the estimated shipping to
 
 ## Cloudflare deployment
 
-1. Log in with `npx wrangler@4 login`. Keep the account on its free plan.
-2. Run `npx wrangler@4 d1 create sharethecost`. Copy the returned database ID into `wrangler.toml`.
-3. Run `npx wrangler@4 d1 migrations apply sharethecost --remote`.
-4. Run `npx wrangler@4 pages project create sharethecost --production-branch main`. If that name is already taken, use an available project name in the command and in `wrangler.toml`.
-5. Add a Turnstile widget for the production hostname and any preview host you plan to use. Set `TURNSTILE_SITE_KEY` as a Pages environment variable, and store `TURNSTILE_SECRET` and a randomly generated `ADMIN_PASSWORD` as encrypted Pages secrets. Keep `LOCAL_DEV` unset in Pages.
-6. Deploy from this directory with `npx wrangler@4 pages deploy dist --project-name sharethecost` (use the actual project name). In Pages, add `sharethecost.whenly.org` as a custom domain. If DNS is external, add the CNAME Pages provides at the existing DNS provider.
-7. Once HTTPS and Turnstile are active, submit a test proposal from the production domain, approve it, join from a separate browser, verify the public progress and private organizer view, then withdraw and close the test listing. Add the sitemap to Google Search Console after public URLs are ready.
+See [the Cloudflare Pages deployment guide](DEPLOYMENT.md).
 
 The site records email addresses for organizer coordination. It treats entries as expressions of interest and does not verify email ownership. Public pages never list participant emails. Each participant gets a private management link and needs to save it to change or withdraw their quantity later. Export D1 periodically and keep backups private.

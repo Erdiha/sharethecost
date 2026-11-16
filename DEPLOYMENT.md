@@ -1,183 +1,30 @@
-# Deployment Guide - Share the Cost
+# Deploy Share the Cost to Cloudflare Pages
 
-## Security & Secrets
+Use the existing free Pages project and D1 database named `sharethecost`. The production domain is `sharethecost.whenly.org`.
 
-⚠️ **IMPORTANT: Do NOT commit sensitive information to git:**
-- Database IDs
-- API keys
-- Admin passwords
-- Environment variables
+## Prepare and deploy
 
-All secrets are managed via Cloudflare dashboard, not in code.
+1. Run `npm test` with Node.js 24 or later.
+2. Sign into Wrangler with `npx wrangler@4 login`. If you need a local D1 configuration, copy `wrangler.toml.template` to `wrangler.toml` and enter the existing D1 database ID. Use the Pages project's current settings if it already has a Wrangler configuration.
+3. Confirm that production binds the existing D1 database as `DB`. Set `TURNSTILE_SITE_KEY` and store `TURNSTILE_SECRET` and `ADMIN_PASSWORD` as Pages secrets. The Turnstile widget must allow the production hostname. Keep `LOCAL_DEV` unset in production.
+4. Back up D1 before upgrading older data. Apply pending migrations explicitly. Migration 0003 keeps the earliest registration for each case-insensitive email and group buy, including its quantity and private management link, and removes later duplicates.
 
----
+   ```sh
+   npx wrangler@4 d1 migrations apply sharethecost --remote
+   ```
 
-## Prerequisites
+5. Deploy from the repository root so Wrangler includes both `dist/` and `functions/`. Use the existing project's production branch, shown here as `main`.
 
-- Cloudflare account with Workers enabled
-- D1 Database created
-- Custom domain: sharethecost.whenly.org configured at your registrar
-- Node.js >=24 installed
+   ```sh
+   npx wrangler@4 pages deploy dist --project-name sharethecost --branch main
+   ```
 
----
+## Verify production
 
-## Step 1: Get Your D1 Database ID
+Check the homepage, proposal form, `/privacy`, `/terms`, `/robots.txt`, and `/sitemap.xml`. Verify that Turnstile accepts a proposal, an organizer can approve it, and a separate participant can join, update their quantity, and withdraw. Verify that the organizer can publish shipping and pickup details and close the listing. Remove any test data after checking.
 
-1. Go to [Cloudflare Dashboard](https://dash.cloudflare.com)
-2. Workers & Pages → D1 → Create Database → "sharethecost"
-3. Copy the Database ID
+Use the site's public contact address to receive privacy requests and reports. Keep personal details out of public updates. Review closed and rejected records periodically and remove contact data once it is no longer needed to coordinate a buy or handle a legitimate follow-up.
 
----
+Use **Remove listing** in the organizer dashboard to take a reported listing off the public site. Participants can still withdraw through their private links. Turnstile must validate the correct form action before a submission reaches the database. The database rejects reused verification tokens and allows up to 12 verified submits per IP address over 10 minutes across both forms.
 
-## Step 2: Configure Local Environment
-
-```bash
-# Copy the template
-cp wrangler.local.toml wrangler.toml
-
-# Edit wrangler.toml and replace:
-# database_id = "YOUR_D1_DATABASE_ID_HERE"
-# With your actual D1 database ID from step 1
-
-nano wrangler.toml
-```
-
-⚠️ `wrangler.toml` in the repo has placeholder ID for security.
-⚠️ Never commit your actual database ID to git.
-
----
-
-## Step 3: Install Dependencies
-
-```bash
-npm install
-```
-
----
-
-## Step 4: Test Locally
-
-```bash
-npm test              # Run all tests (11 tests)
-npm run dev          # Start dev server on http://127.0.0.1:8788
-```
-
----
-
-## Step 5: Deploy to Cloudflare Workers
-
-```bash
-wrangler deploy
-```
-
-Output will show:
-- Worker URL (e.g., sharethecost.YOUR_ACCOUNT.workers.dev)
-- Database binding status
-- Migrations applied
-
----
-
-## Step 6: Connect Custom Domain
-
-1. Cloudflare Dashboard → Workers → sharethecost
-2. Settings → Custom Domains
-3. Add Domain: `sharethecost.whenly.org`
-4. Cloudflare provides CNAME record
-5. Add CNAME at your domain registrar
-
-Wait for DNS propagation (~5 minutes).
-
----
-
-## Step 7: Verify Production Deployment
-
-```bash
-curl https://sharethecost.whenly.org/
-# Should return homepage with disclaimer
-```
-
----
-
-## Admin Access
-
-Production admin panel: `https://sharethecost.whenly.org/admin`
-
-Authentication:
-- Username: `admin`
-- Password: Set via `ADMIN_PASSWORD` environment variable in Cloudflare Workers
-
-To set environment variable:
-1. Cloudflare Dashboard → Workers → sharethecost
-2. Settings → Variables → Environment Variables
-3. Add: `ADMIN_PASSWORD` = your secure password
-
----
-
-## Maintenance
-
-### Database Migrations
-Migrations auto-apply on worker startup from `migrations/` directory:
-- 0001_initial.sql (schema)
-- 0002_buy_updates.sql (organizer coordination)
-- 0003_email_normalization.sql (email case-fix)
-
-### Monitoring
-View worker logs:
-```bash
-wrangler tail
-```
-
-### Updates
-To deploy code changes:
-```bash
-git add .
-git commit -m "Your changes"
-git push
-wrangler deploy
-```
-
----
-
-## Troubleshooting
-
-### Database ID not found
-- Check D1 database exists in Cloudflare dashboard
-- Verify database_id in wrangler.toml is correct
-- Don't commit actual IDs to git
-
-### Custom domain not working
-- Wait for DNS propagation (can take 5-30 minutes)
-- Verify CNAME record is correct: `wrangler cf-tunnel`
-- Check domain settings in Cloudflare dashboard
-
-### Admin login not working
-- Verify `ADMIN_PASSWORD` environment variable is set in Cloudflare dashboard
-- Login with: `admin:YOUR_PASSWORD`
-
-### Migrations not applying
-- Check D1 database is writable
-- Verify migrations_dir path is correct in wrangler.toml
-- View logs: `wrangler tail`
-
----
-
-## Security Checklist
-
-✅ Database ID NOT committed to git
-✅ Admin password stored in Cloudflare variables only
-✅ HTTPS enforced (Cloudflare automatic)
-✅ XSS protection (HTML escaping)
-✅ CSRF protection (Origin header)
-✅ CSP headers set
-✅ Private IPs blocked in supplier URLs
-✅ No tracking params in URLs
-✅ Email validation & normalization
-
----
-
-## Support
-
-Questions? Check:
-- GitHub: https://github.com/Erdiha/sharethecost
-- Cloudflare Docs: https://developers.cloudflare.com/workers/
-- D1 Docs: https://developers.cloudflare.com/d1/
+See [Cloudflare Pages deployment](https://developers.cloudflare.com/pages/get-started/direct-upload/) and [D1 migrations](https://developers.cloudflare.com/d1/reference/migrations/).
