@@ -4,6 +4,9 @@ name = "sharethecost"
 pages_build_output_dir = "./dist"
 compatibility_date = "2026-11-13"
 
+[vars]
+TURNSTILE_SITE_KEY = "0x4AAAAAAGCqOqqHA_HUm7DD"
+
 [[d1_databases]]
 binding = "DB"
 database_name = "sharethecost"

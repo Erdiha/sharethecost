@@ -29,6 +29,24 @@ test('production forms explain missing Turnstile configuration and reject submis
   assert.equal((await DB.prepare('SELECT COUNT(*) AS count FROM buys').first()).count, 0);
 });
 
+test('browser verification errors redirect to a reloadable form', async t => {
+  const DB = openDatabase();
+  t.after(() => DB.close());
+  const origin = 'https://sharethecost.whenly.org';
+  const env = { DB, TURNSTILE_SITE_KEY: 'test-site-key', TURNSTILE_SECRET: 'test-secret' };
+  t.mock.method(globalThis, 'fetch', async () => { throw new Error('Siteverify timeout'); });
+  const request = new Request(origin + '/propose', {
+    method: 'POST', headers: { Origin: origin, Accept: 'text/html' },
+    body: new URLSearchParams({ 'cf-turnstile-response': 'test-token', email: 'private@example.com' }),
+  });
+  const response = await onRequest({ request, env });
+  assert.equal(response.status, 303);
+  assert.equal(response.headers.get('Location'), '/propose?verification=503');
+  const retry = await onRequest({ request: new Request(origin + response.headers.get('Location')), env });
+  assert.match(await retry.text(), /role="alert">Verification is temporarily unavailable/);
+  assert.equal((await DB.prepare('SELECT COUNT(*) AS count FROM buys').first()).count, 0);
+});
+
 test('production submissions reject mismatched actions, replay and bursts', async t => {
   const DB = openDatabase();
   t.after(() => DB.close());

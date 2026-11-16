@@ -61,6 +61,16 @@ const redirect = path => new Response(null, { status: 303, headers: {
 const field = (form, key) => String(form.get(key) ?? '').trim();
 const maxFormBytes = 48 * 1024;
 const turnstileConfigured = env => Boolean(env.TURNSTILE_SITE_KEY?.trim() && env.TURNSTILE_SECRET?.trim());
+const submissionMessages = new Map([
+  [403, 'Verification failed. Complete a fresh verification and try again.'],
+  [429, 'This verification was already used or there were too many submissions. Try again in a few minutes.'],
+  [503, 'Verification is temporarily unavailable. Please try again shortly.'],
+]);
+function submissionNotice(url) {
+  const message = submissionMessages.get(Number(url.searchParams.get('verification')));
+  return message ? `<p role="alert">${escape(message)}</p>` : '';
+}
+
 
 async function readForm(request) {
   const reader = request.body?.getReader();
@@ -131,12 +141,17 @@ async function checkSubmission(request, form, url, env, action) {
   const rejected = () => errorPage(403, 'Verification failed. Return to the form and try again.');
   if (!token || token.length > 2048) return rejected();
   const address = request.headers.get('CF-Connecting-IP') ?? '';
-  const response = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
-    method: 'POST', signal: AbortSignal.timeout(5000),
-    body: new URLSearchParams({ secret: env.TURNSTILE_SECRET, response: token, ...(address && { remoteip: address }) }),
-  });
-  if (!response.ok) return errorPage(503, 'Verification is temporarily unavailable. Please try again shortly.');
-  const result = await response.json();
+  let result;
+  try {
+    const response = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+      method: 'POST', signal: AbortSignal.timeout(5000),
+      body: new URLSearchParams({ secret: env.TURNSTILE_SECRET, response: token, ...(address && { remoteip: address }) }),
+    });
+    if (!response.ok) return errorPage(503, submissionMessages.get(503));
+    result = await response.json();
+  } catch {
+    return errorPage(503, submissionMessages.get(503));
+  }
   if (result.success !== true || result.hostname !== url.hostname || result.action !== action) return rejected();
 
   const [tokenHash, clientHash] = await Promise.all([
@@ -235,6 +250,7 @@ ${results.length ? `<div class="cards-grid">${results.map(card).join('')}</div>`
 
 function propose(url, env) {
   return page('Propose a group buy', section(`<h1>Propose a group buy</h1><p>Approved proposals appear on the site. Your email stays private and is available to the organizer for coordination.</p><p>${paymentNotice}</p>
+${submissionNotice(url)}
 <form method="post" class="stack proposal-form">
 <label>Product name<input name="title" required minlength="3" maxlength="100"></label>
 ${categoryPicker({ required: true })}
@@ -279,6 +295,7 @@ ${shipping == null ? '<p>Shipping estimate pending.</p>' : `<p><strong>${usd.for
 <p class="details">${escape(update?.pickup_details || 'Pickup details pending.')}</p>
 ${update?.organizer_note ? `<p class="details">${escape(update.organizer_note)}</p>` : ''}
 ${buy.status === 'closed' ? '<p>This group buy is closed.</p>' : `<h2>Register interest</h2><p>Joining records your requested quantity. It does not place an order or charge you. The organizer can use your email to coordinate this buy.</p><p>${paymentNotice}</p>
+${submissionNotice(url)}
 <form method="post" class="stack"${embedded ? ' target="_blank" rel="noopener"' : ''}><label>Quantity<input type="number" name="quantity" min="1" max="10000" value="1" required></label>
 <label>Email<input type="email" name="email" maxlength="254" required></label><p>${policyLinks}</p>${captcha(url, env, 'join')}<button>${embedded ? 'Join group buy (opens in a new tab)' : 'Join group buy'}</button></form>`}`),
   { path: `/buys/${slug}`, description: buy.description.slice(0, 155) });
@@ -419,7 +436,12 @@ async function handleRequest({ request, env, next }) {
     if (interest) return await manage(form, env.DB, interest[1]);
     if (posting && (buy || path === '/propose')) {
       const rejected = await checkSubmission(request, form, url, env, buy ? 'join' : 'propose');
-      if (rejected) return rejected;
+      if (rejected) {
+        if (request.headers.get('Accept')?.includes('text/html')) {
+          return redirect(`${path}?verification=${rejected.status}`);
+        }
+        return rejected;
+      }
       return buy ? await join(form, env.DB, buy[1]) : await submitProposal(form, env.DB);
     }
     if (posting) return errorPage(405, 'Method not allowed.');
